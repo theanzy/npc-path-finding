@@ -17,7 +17,7 @@ pub fn main() !void {
     const npc_source_rect = rl.Rectangle.init(0, 0, @as(f32, @floatFromInt(tex_npc.width)), @as(f32, @floatFromInt(tex_npc.height)));
     const npc_rect = rl.Rectangle.init(160, 200, npc_source_rect.width / 2, npc_source_rect.height / 2);
     const npc_origin = rl.Vector2.init(npc_rect.width / 2, npc_rect.height / 2);
-    const npc_rotation = 0;
+    var npc_rotation: f32 = 0.0;
 
     const tex_pin = rl.loadTexture("assets/images/location.png");
     defer rl.unloadTexture(tex_pin);
@@ -35,6 +35,12 @@ pub fn main() !void {
             mousepos = rl.getMousePosition();
             pin_rect.x = mousepos.?.x;
             pin_rect.y = mousepos.?.y;
+            const npc_center = rl.Vector2.init(npc_rect.x, npc_rect.y);
+
+            // const radian = npc_center.angle(mousepos.?);
+            const radian = std.math.atan2(mousepos.?.y - npc_center.y, mousepos.?.x - npc_center.x);
+            const degree = radian * std.math.deg_per_rad;
+            npc_rotation = degree;
         } else if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_right)) {
             mousepos = null;
         }
