@@ -28,7 +28,19 @@ pub fn main() !void {
 
     var mousepos: ?rl.Vector2 = null;
 
+    // collision blocks
     rl.setTargetFPS(60);
+
+    const blocks = [_]rl.Rectangle{
+        rl.Rectangle.init(330, 0, 80, 250),
+        rl.Rectangle.init(330, 450, 700, 80),
+        rl.Rectangle.init(600, 160, 80, 350),
+        rl.Rectangle.init(330, 700, 80, 500),
+        rl.Rectangle.init(650, 700, 800, 80),
+        rl.Rectangle.init(900, 230, 800, 80),
+        rl.Rectangle.init(1250, 450, 250, 80),
+    };
+
     while (!rl.windowShouldClose()) {
         // update
         if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_left)) {
@@ -41,6 +53,7 @@ pub fn main() !void {
             const degree = radian * std.math.deg_per_rad;
             npc_rotation = degree;
             npc_direction = mousepos.?.subtract(npc_center).normalize();
+            std.debug.print("mouse.point ({d},{d})\n", .{ mousepos.?.x, mousepos.?.y });
         } else if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_right)) {
             mousepos = null;
         }
@@ -56,6 +69,9 @@ pub fn main() !void {
         // draw
         rl.beginDrawing();
         rl.clearBackground(rl.Color.dark_gray);
+        for (blocks) |block| {
+            rl.drawRectangleRec(block, rl.Color.dark_purple);
+        }
         rl.drawTexturePro(tex_npc, npc_source_rect, npc_rect, npc_origin, npc_rotation, rl.Color.gray);
         if (mousepos != null) {
             rl.drawTexturePro(tex_pin, pin_source_rect, pin_rect, pin_origin, 0, rl.Color.gray);
