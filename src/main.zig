@@ -15,9 +15,10 @@ pub fn main() !void {
     defer rl.unloadTexture(tex_npc);
 
     const npc_source_rect = rl.Rectangle.init(0, 0, @as(f32, @floatFromInt(tex_npc.width)), @as(f32, @floatFromInt(tex_npc.height)));
-    const npc_rect = rl.Rectangle.init(160, 200, npc_source_rect.width / 2, npc_source_rect.height / 2);
+    var npc_rect = rl.Rectangle.init(160, 200, npc_source_rect.width / 2, npc_source_rect.height / 2);
     const npc_origin = rl.Vector2.init(npc_rect.width / 2, npc_rect.height / 2);
     var npc_rotation: f32 = 0.0;
+    var npc_direction = rl.Vector2.init(0, 0);
 
     const tex_pin = rl.loadTexture("assets/images/location.png");
     defer rl.unloadTexture(tex_pin);
@@ -41,8 +42,17 @@ pub fn main() !void {
             const radian = std.math.atan2(mousepos.?.y - npc_center.y, mousepos.?.x - npc_center.x);
             const degree = radian * std.math.deg_per_rad;
             npc_rotation = degree;
+            npc_direction = mousepos.?.subtract(npc_center).normalize();
         } else if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_right)) {
             mousepos = null;
+        }
+
+        // TODO limit by fps delta
+        npc_rect.x += npc_direction.x * 10;
+        npc_rect.y += npc_direction.y * 10;
+
+        if (mousepos != null and mousepos.?.distance(rl.Vector2{ .x = npc_rect.x, .y = npc_rect.y }) < 5) {
+            npc_direction = rl.Vector2.zero();
         }
 
         // draw
