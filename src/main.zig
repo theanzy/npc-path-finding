@@ -32,13 +32,11 @@ pub fn main() !void {
     while (!rl.windowShouldClose()) {
         // update
         if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_left)) {
-            // const mousepos = rl.getMousePosition();
             mousepos = rl.getMousePosition();
             pin_rect.x = mousepos.?.x;
             pin_rect.y = mousepos.?.y;
             const npc_center = rl.Vector2.init(npc_rect.x, npc_rect.y);
 
-            // const radian = npc_center.angle(mousepos.?);
             const radian = std.math.atan2(mousepos.?.y - npc_center.y, mousepos.?.x - npc_center.x);
             const degree = radian * std.math.deg_per_rad;
             npc_rotation = degree;
@@ -47,9 +45,9 @@ pub fn main() !void {
             mousepos = null;
         }
 
-        // TODO limit by fps delta
-        npc_rect.x += npc_direction.x * 10;
-        npc_rect.y += npc_direction.y * 10;
+        const dt = rl.getFrameTime();
+        npc_rect.x += npc_direction.x * 400 * dt;
+        npc_rect.y += npc_direction.y * 400 * dt;
 
         if (mousepos != null and mousepos.?.distance(rl.Vector2{ .x = npc_rect.x, .y = npc_rect.y }) < 5) {
             npc_direction = rl.Vector2.zero();
