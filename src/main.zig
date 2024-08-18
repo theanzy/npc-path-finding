@@ -148,15 +148,10 @@ pub fn main() !void {
         rl.Vector2.init(172, 373),
     );
     try points.calculateDistance();
-    const paths = try points.getShortestPath(rl.Vector2.init(155, 128), rl.Vector2.init(804, 375));
-    for (paths.items) |point| {
-        std.debug.print("path ({d}, {d})\n", .{ point.x, point.y });
-    }
-    // assets
 
     rl.initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "path fiding");
     defer rl.closeWindow();
-
+    // assets
     const tex_npc = rl.loadTexture("assets/sprites/npc/green/rifle/idle/npc-idle-rifle-00.png");
     defer rl.unloadTexture(tex_npc);
 

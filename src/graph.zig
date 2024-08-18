@@ -61,9 +61,9 @@ pub const Graph = struct {
         }
     }
 
-    pub fn getShortestPath(self: *@This(), start: rl.Vector2, end: rl.Vector2) !std.ArrayList(rl.Vector2) {
+    pub fn getShortestPath(self: *@This(), allocator: std.mem.Allocator, start: rl.Vector2, end: rl.Vector2) !std.ArrayList(rl.Vector2) {
         var arena = self.arena;
-        var result = std.ArrayList(rl.Vector2).init(arena.allocator());
+        var result = std.ArrayList(rl.Vector2).init(allocator);
         if (!self._graphs.contains(start) or !self._graphs.contains(end)) {
             return result;
         }
