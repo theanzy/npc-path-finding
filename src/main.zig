@@ -147,8 +147,13 @@ pub fn main() !void {
         rl.Vector2.init(232, 634),
         rl.Vector2.init(172, 373),
     );
-
+    try points.calculateDistance();
+    const paths = try points.getShortestPath(rl.Vector2.init(155, 128), rl.Vector2.init(804, 375));
+    for (paths.items) |point| {
+        std.debug.print("path ({d}, {d})\n", .{ point.x, point.y });
+    }
     // assets
+
     rl.initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "path fiding");
     defer rl.closeWindow();
 
@@ -204,16 +209,14 @@ pub fn main() !void {
         for (blocks) |block| {
             rl.drawRectangleRec(block, rl.Color.dark_purple);
         }
-        var pointsIter = points.iter();
+        var nodeIter = points.valueIter();
 
-        while (pointsIter.next()) |pointEntry| {
-            const point = pointEntry.key_ptr;
+        while (nodeIter.next()) |node| {
+            const point = node.point;
 
-            const neighbors = pointEntry.value_ptr;
-            for (neighbors.*.items) |neighbor| {
-                // const neighbor_x = neighbor.x - @as(f32, @floatFromInt(tex_node.width)) / 2;
-                // const neighbor_y = neighbor.y - @as(f32, @floatFromInt(tex_node.height));
-                rl.drawLineEx(point.*, neighbor, 1, rl.Color.light_gray);
+            const neighbors = node.neighbors;
+            for (neighbors.items) |neighbor| {
+                rl.drawLineEx(point, neighbor, 1, rl.Color.light_gray);
             }
 
             const x = point.x - @as(f32, @floatFromInt(tex_node.width)) / 2;
