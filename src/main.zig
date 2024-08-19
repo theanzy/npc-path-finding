@@ -20,134 +20,143 @@ pub fn main() !void {
         rl.Rectangle.init(900, 230, 800, 80),
         rl.Rectangle.init(1250, 450, 250, 80),
     };
+    const GameState = enum {
+        idle,
+        moving,
+    };
+    var game_state: GameState = GameState.idle;
+    var npc_moveindex: usize = 0;
 
-    var points = graph.Graph.init(allocator);
-    defer points.deinit();
-    try points.addConnection(
+    var g = graph.Graph.init(allocator);
+    defer g.deinit();
+    try g.addConnection(
         rl.Vector2.init(155, 128),
         rl.Vector2.init(172, 373),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(172, 373),
         rl.Vector2.init(155, 128),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(172, 373),
         rl.Vector2.init(232, 634),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(172, 373),
         rl.Vector2.init(538, 361),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(538, 361),
         rl.Vector2.init(172, 373),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(538, 361),
         rl.Vector2.init(545, 98),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(545, 98),
         rl.Vector2.init(538, 361),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(545, 98),
         rl.Vector2.init(789, 107),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(789, 107),
         rl.Vector2.init(545, 98),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(789, 107),
         rl.Vector2.init(804, 375),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(789, 107),
         rl.Vector2.init(1760, 128),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(804, 375),
         rl.Vector2.init(789, 107),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(804, 375),
         rl.Vector2.init(1165, 400),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1760, 128),
         rl.Vector2.init(789, 107),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1760, 128),
         rl.Vector2.init(1757, 647),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1165, 400),
         rl.Vector2.init(804, 375),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1165, 400),
         rl.Vector2.init(1117, 623),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1757, 647),
         rl.Vector2.init(1117, 623),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1757, 647),
         rl.Vector2.init(1551, 917),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1117, 623),
         rl.Vector2.init(1757, 647),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1117, 623),
         rl.Vector2.init(557, 632),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1117, 623),
         rl.Vector2.init(1165, 400),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1551, 917),
         rl.Vector2.init(1757, 647),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(1551, 917),
         rl.Vector2.init(550, 903),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(550, 903),
         rl.Vector2.init(557, 632),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(550, 903),
         rl.Vector2.init(1551, 917),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(557, 632),
         rl.Vector2.init(1117, 623),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(557, 632),
         rl.Vector2.init(550, 903),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(557, 632),
         rl.Vector2.init(232, 634),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(232, 634),
         rl.Vector2.init(557, 632),
     );
-    try points.addConnection(
+    try g.addConnection(
         rl.Vector2.init(232, 634),
         rl.Vector2.init(172, 373),
     );
-    try points.calculateDistance();
+    try g.calculateDistance();
+
+    var shortest_path: ?std.ArrayList(rl.Vector2) = null;
+    defer if (shortest_path != null) shortest_path.?.deinit();
 
     rl.initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "path fiding");
     defer rl.closeWindow();
@@ -173,29 +182,73 @@ pub fn main() !void {
     // collision blocks
     rl.setTargetFPS(60);
 
-    while (!rl.windowShouldClose()) {
+    game_loop: while (!rl.windowShouldClose()) {
         // update
-        if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_left)) {
-            mousepos = rl.getMousePosition();
-            pin_rect.x = mousepos.?.x;
-            pin_rect.y = mousepos.?.y;
-            const npc_center = rl.Vector2.init(npc_rect.x, npc_rect.y);
+        switch (game_state) {
+            GameState.idle => {
+                if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_left)) {
+                    mousepos = rl.getMousePosition();
+                    pin_rect.x = mousepos.?.x;
+                    pin_rect.y = mousepos.?.y;
 
-            const radian = std.math.atan2(mousepos.?.y - npc_center.y, mousepos.?.x - npc_center.x);
-            const degree = radian * std.math.deg_per_rad;
-            npc_rotation = degree;
-            npc_direction = mousepos.?.subtract(npc_center).normalize();
-            std.debug.print("mouse.point ({d},{d})\n", .{ mousepos.?.x, mousepos.?.y });
-        } else if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_right)) {
-            mousepos = null;
-        }
+                    const start_point = graphFindNearestPoint(&g, rl.Vector2.init(npc_rect.x, npc_rect.y));
+                    if (start_point == null) {
+                        continue :game_loop;
+                    }
+                    const end_point = graphFindNearestPoint(&g, rl.Vector2.init(pin_rect.x, pin_rect.y));
+                    if (end_point == null) {
+                        continue :game_loop;
+                    }
+                    if (shortest_path != null) {
+                        shortest_path.?.deinit();
+                    }
+                    shortest_path = try g.getShortestPath(allocator, start_point.?, end_point.?);
+                    if (shortest_path.?.items.len == 0) {
+                        shortest_path.?.deinit();
+                        shortest_path = null;
+                        continue :game_loop;
+                    } else {
+                        if (shortest_path.?.items[shortest_path.?.items.len - 1].equals(mousepos.?) != 1) {
+                            try shortest_path.?.append(mousepos.?);
+                        }
+                        game_state = GameState.moving;
+                        npc_moveindex = 0;
+                    }
+                    std.debug.print("mouse.point ({d},{d})\n", .{ mousepos.?.x, mousepos.?.y });
+                } else if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_right)) {
+                    mousepos = null;
+                }
+            },
+            GameState.moving => {
+                const dt = rl.getFrameTime();
+                // npc_move_index
+                npc_rect.x += npc_direction.x * 400 * dt;
+                npc_rect.y += npc_direction.y * 400 * dt;
+                const npc_center = rl.Vector2.init(npc_rect.x, npc_rect.y);
+                if (npc_direction.x == 0 and npc_direction.y == 0) {
+                    std.debug.print("start move\n", .{});
+                    const dest_point = shortest_path.?.items[npc_moveindex];
+                    npc_direction = dest_point.subtract(npc_center).normalize();
 
-        const dt = rl.getFrameTime();
-        npc_rect.x += npc_direction.x * 400 * dt;
-        npc_rect.y += npc_direction.y * 400 * dt;
+                    const radian = std.math.atan2(mousepos.?.y - npc_center.y, mousepos.?.x - npc_center.x);
+                    const degree = radian * std.math.deg_per_rad;
+                    npc_rotation = degree;
+                } else {
+                    const dest_point = shortest_path.?.items[npc_moveindex];
+                    if (dest_point.distance(npc_center) < 30) {
+                        std.debug.print("reach point {d}\n", .{npc_moveindex});
 
-        if (mousepos != null and mousepos.?.distance(rl.Vector2{ .x = npc_rect.x, .y = npc_rect.y }) < 5) {
-            npc_direction = rl.Vector2.zero();
+                        npc_moveindex += 1;
+                        if (npc_moveindex >= shortest_path.?.items.len) {
+                            npc_moveindex = 0;
+                            game_state = GameState.idle;
+                            npc_direction = rl.Vector2.init(0, 0);
+                        } else {
+                            npc_direction = rl.Vector2.init(0, 0);
+                        }
+                    }
+                }
+            },
         }
 
         // draw
@@ -204,7 +257,7 @@ pub fn main() !void {
         for (blocks) |block| {
             rl.drawRectangleRec(block, rl.Color.dark_purple);
         }
-        var nodeIter = points.valueIter();
+        var nodeIter = g.valueIter();
 
         while (nodeIter.next()) |node| {
             const point = node.point;
@@ -229,4 +282,19 @@ pub fn main() !void {
 
         rl.endDrawing();
     }
+}
+
+fn graphFindNearestPoint(g: *graph.Graph, point: rl.Vector2) ?rl.Vector2 {
+    var iter = g.valueIter();
+    var nearest_point: ?rl.Vector2 = null;
+    var min_distance = std.math.inf(f32);
+    while (iter.next()) |value| {
+        const distance = value.point.distance(point);
+        // TODO add raycast check with rectangle obstacles
+        if (distance < min_distance) {
+            min_distance = distance;
+            nearest_point = value.point;
+        }
+    }
+    return nearest_point;
 }
