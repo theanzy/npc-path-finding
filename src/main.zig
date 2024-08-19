@@ -182,7 +182,7 @@ pub fn main() !void {
     // collision blocks
     rl.setTargetFPS(60);
 
-    game_loop: while (!rl.windowShouldClose()) {
+    while (!rl.windowShouldClose()) {
         // update
         switch (game_state) {
             GameState.idle => {
@@ -194,29 +194,22 @@ pub fn main() !void {
                     std.debug.print("mouse.point ({d},{d})\n", .{ mousepos.?.x, mousepos.?.y });
 
                     const start_point = graphFindNearestPoint(&g, rl.Vector2.init(npc_rect.x, npc_rect.y), &blocks);
-                    if (start_point == null) {
-                        std.debug.print("null startponit\n", .{});
-                        continue :game_loop;
-                    }
                     const end_point = graphFindNearestPoint(&g, rl.Vector2.init(pin_rect.x, pin_rect.y), &blocks);
-                    if (end_point == null) {
-                        std.debug.print("null endpoint\n", .{});
-                        continue :game_loop;
-                    }
-                    if (shortest_path != null) {
-                        shortest_path.?.deinit();
-                    }
-                    shortest_path = try g.getShortestPath(allocator, start_point.?, end_point.?);
-                    if (shortest_path.?.items.len == 0) {
-                        shortest_path.?.deinit();
-                        shortest_path = null;
-                        continue :game_loop;
-                    } else {
-                        if (shortest_path.?.items[shortest_path.?.items.len - 1].equals(mousepos.?) != 1) {
-                            try shortest_path.?.append(mousepos.?);
+                    if (start_point != null and end_point != null) {
+                        if (shortest_path != null) {
+                            shortest_path.?.deinit();
                         }
-                        game_state = GameState.moving;
-                        npc_moveindex = 0;
+                        shortest_path = try g.getShortestPath(allocator, start_point.?, end_point.?);
+                        if (shortest_path.?.items.len == 0) {
+                            shortest_path.?.deinit();
+                            shortest_path = null;
+                        } else {
+                            if (shortest_path.?.items[shortest_path.?.items.len - 1].equals(mousepos.?) != 1) {
+                                try shortest_path.?.append(mousepos.?);
+                            }
+                            game_state = GameState.moving;
+                            npc_moveindex = 0;
+                        }
                     }
                 } else if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_right)) {
                     mousepos = null;
@@ -294,9 +287,9 @@ fn graphFindNearestPoint(g: *graph.Graph, origin: rl.Vector2, obstacles: []const
     var nearest_point: ?rl.Vector2 = null;
     var min_distance = std.math.inf(f32);
     while (iter.next()) |value| {
-        const dir = origin.subtract(value.point).normalize();
+        const dir = value.point.subtract(origin);
         const is_insight = for (obstacles) |obstacle| {
-            if (rayIntersectRect(value.point, dir, obstacle)) {
+            if (rayIntersectRect(origin, dir, obstacle)) {
                 break false;
             }
         } else true;
