@@ -191,12 +191,16 @@ pub fn main() !void {
                     pin_rect.x = mousepos.?.x;
                     pin_rect.y = mousepos.?.y;
 
-                    const start_point = graphFindNearestPoint(&g, rl.Vector2.init(npc_rect.x, npc_rect.y));
+                    std.debug.print("mouse.point ({d},{d})\n", .{ mousepos.?.x, mousepos.?.y });
+
+                    const start_point = graphFindNearestPoint(&g, rl.Vector2.init(npc_rect.x, npc_rect.y), &blocks);
                     if (start_point == null) {
+                        std.debug.print("null startponit\n", .{});
                         continue :game_loop;
                     }
-                    const end_point = graphFindNearestPoint(&g, rl.Vector2.init(pin_rect.x, pin_rect.y));
+                    const end_point = graphFindNearestPoint(&g, rl.Vector2.init(pin_rect.x, pin_rect.y), &blocks);
                     if (end_point == null) {
+                        std.debug.print("null endpoint\n", .{});
                         continue :game_loop;
                     }
                     if (shortest_path != null) {
@@ -214,7 +218,6 @@ pub fn main() !void {
                         game_state = GameState.moving;
                         npc_moveindex = 0;
                     }
-                    std.debug.print("mouse.point ({d},{d})\n", .{ mousepos.?.x, mousepos.?.y });
                 } else if (rl.isMouseButtonPressed(rl.MouseButton.mouse_button_right)) {
                     mousepos = null;
                 }
@@ -236,10 +239,12 @@ pub fn main() !void {
                 } else {
                     const dest_point = shortest_path.?.items[npc_moveindex];
                     if (dest_point.distance(npc_center) < 30) {
-                        std.debug.print("reach point {d}\n", .{npc_moveindex});
+                        std.debug.print("reach point {d} / {d}\n", .{ npc_moveindex, shortest_path.?.items.len - 1 });
 
                         npc_moveindex += 1;
                         if (npc_moveindex >= shortest_path.?.items.len) {
+                            std.debug.print("end walking\n", .{});
+
                             npc_moveindex = 0;
                             game_state = GameState.idle;
                             npc_direction = rl.Vector2.init(0, 0);
@@ -284,17 +289,67 @@ pub fn main() !void {
     }
 }
 
-fn graphFindNearestPoint(g: *graph.Graph, point: rl.Vector2) ?rl.Vector2 {
+fn graphFindNearestPoint(g: *graph.Graph, origin: rl.Vector2, obstacles: []const rl.Rectangle) ?rl.Vector2 {
     var iter = g.valueIter();
     var nearest_point: ?rl.Vector2 = null;
     var min_distance = std.math.inf(f32);
     while (iter.next()) |value| {
-        const distance = value.point.distance(point);
-        // TODO add raycast check with rectangle obstacles
+        const dir = origin.subtract(value.point).normalize();
+        const is_insight = for (obstacles) |obstacle| {
+            if (rayIntersectRect(value.point, dir, obstacle)) {
+                break false;
+            }
+        } else true;
+        if (!is_insight) {
+            continue;
+        }
+
+        const distance = value.point.distance(origin);
+
         if (distance < min_distance) {
             min_distance = distance;
             nearest_point = value.point;
         }
     }
+    if (nearest_point != null) {
+        std.debug.print("nearest_point ({d},{d})\n", .{ nearest_point.?.x, nearest_point.?.y });
+    } else {
+        std.debug.print("nearest_point is null\n", .{});
+    }
     return nearest_point;
+}
+
+// intersection using the slab method
+// https://tavianator.com/2011/ray_box.html#:~:text=The%20fastest%20method%20for%20performing,remains%2C%20it%20intersected%20the%20box.
+fn rayIntersectRect(origin: rl.Vector2, direction: rl.Vector2, rect: rl.Rectangle) bool {
+    var minParam = -std.math.inf(f32);
+    var maxParam = std.math.inf(f32);
+
+    if (@round(direction.x) != 0) {
+        const txMin = (rect.x - origin.x) / direction.x;
+        const txMax = ((rect.x + rect.width) - origin.x) / direction.x;
+
+        minParam = @max(minParam, @min(txMin, txMax));
+        maxParam = @min(maxParam, @max(txMin, txMax));
+    }
+
+    if (direction.y != 0.0) {
+        const tyMin = (rect.y - origin.y) / direction.y;
+        const tyMax = ((rect.y + rect.height) - origin.y) / direction.y;
+
+        minParam = @max(minParam, @min(tyMin, tyMax));
+        maxParam = @min(maxParam, @max(tyMin, tyMax));
+    }
+
+    // if maxParam < 0, ray is intersecting AABB, but the whole AABB is behind us
+    if (maxParam < 0) {
+        return false;
+    }
+
+    // if minParam > maxParam, ray doesn't intersect AABB
+    if (minParam > maxParam) {
+        return false;
+    }
+
+    return true;
 }
