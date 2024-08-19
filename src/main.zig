@@ -193,8 +193,8 @@ pub fn main() !void {
 
                     std.debug.print("mouse.point ({d},{d})\n", .{ mousepos.?.x, mousepos.?.y });
 
-                    const start_point = graphFindNearestPoint(&g, rl.Vector2.init(npc_rect.x, npc_rect.y), &blocks);
-                    const end_point = graphFindNearestPoint(&g, rl.Vector2.init(pin_rect.x, pin_rect.y), &blocks);
+                    const start_point = graphFindNearestPoint(&g, rl.Vector2.init(npc_rect.x, npc_rect.y), &blocks, false);
+                    const end_point = graphFindNearestPoint(&g, rl.Vector2.init(pin_rect.x, pin_rect.y), &blocks, true);
                     if (start_point != null and end_point != null) {
                         if (shortest_path != null) {
                             shortest_path.?.deinit();
@@ -282,24 +282,21 @@ pub fn main() !void {
     }
 }
 
-fn graphFindNearestPoint(g: *graph.Graph, origin: rl.Vector2, obstacles: []const rl.Rectangle) ?rl.Vector2 {
+fn graphFindNearestPoint(g: *graph.Graph, origin: rl.Vector2, obstacles: []const rl.Rectangle, is_ending: bool) ?rl.Vector2 {
     var iter = g.valueIter();
     var nearest_point: ?rl.Vector2 = null;
     var min_distance = std.math.inf(f32);
     while (iter.next()) |value| {
-        const dir = value.point.subtract(origin);
+        const dir = if (is_ending) origin.subtract(value.point) else value.point.subtract(origin);
+        const view_point = if (is_ending) value.point else origin;
         const is_insight = for (obstacles) |obstacle| {
-            if (rayIntersectRect(origin, dir, obstacle)) {
+            if (rayIntersectRect(view_point, dir, obstacle)) {
                 break false;
             }
         } else true;
-        if (!is_insight) {
-            continue;
-        }
-
+        // std.debug.print("({d},{d}) -> ({d},{d}) is_insight = {}\n", .{ origin.x, origin.y, value.point.x, value.point.y, is_insight });
         const distance = value.point.distance(origin);
-
-        if (distance < min_distance) {
+        if (distance < min_distance and is_insight) {
             min_distance = distance;
             nearest_point = value.point;
         }
@@ -315,32 +312,32 @@ fn graphFindNearestPoint(g: *graph.Graph, origin: rl.Vector2, obstacles: []const
 // intersection using the slab method
 // https://tavianator.com/2011/ray_box.html#:~:text=The%20fastest%20method%20for%20performing,remains%2C%20it%20intersected%20the%20box.
 fn rayIntersectRect(origin: rl.Vector2, direction: rl.Vector2, rect: rl.Rectangle) bool {
-    var minParam = -std.math.inf(f32);
-    var maxParam = std.math.inf(f32);
+    var tmin = -std.math.inf(f32);
+    var tmax = std.math.inf(f32);
 
-    if (@round(direction.x) != 0) {
-        const txMin = (rect.x - origin.x) / direction.x;
-        const txMax = ((rect.x + rect.width) - origin.x) / direction.x;
+    if (direction.x != 0.0) {
+        const tx1 = (rect.x - origin.x) / direction.x;
+        const tx2 = ((rect.x + rect.width) - origin.x) / direction.x;
 
-        minParam = @max(minParam, @min(txMin, txMax));
-        maxParam = @min(maxParam, @max(txMin, txMax));
+        tmin = @max(tmin, @min(tx1, tx2));
+        tmax = @min(tmax, @max(tx1, tx2));
     }
 
     if (direction.y != 0.0) {
-        const tyMin = (rect.y - origin.y) / direction.y;
-        const tyMax = ((rect.y + rect.height) - origin.y) / direction.y;
+        const ty1 = (rect.y - origin.y) / direction.y;
+        const ty2 = ((rect.y + rect.height) - origin.y) / direction.y;
 
-        minParam = @max(minParam, @min(tyMin, tyMax));
-        maxParam = @min(maxParam, @max(tyMin, tyMax));
+        tmin = @max(tmin, @min(ty1, ty2));
+        tmax = @min(tmax, @max(ty1, ty2));
     }
 
     // if maxParam < 0, ray is intersecting AABB, but the whole AABB is behind us
-    if (maxParam < 0) {
+    if (tmax < 0) {
         return false;
     }
 
     // if minParam > maxParam, ray doesn't intersect AABB
-    if (minParam > maxParam) {
+    if (tmin > tmax) {
         return false;
     }
 
