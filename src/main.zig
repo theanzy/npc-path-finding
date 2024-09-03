@@ -287,10 +287,10 @@ fn graphFindNearestPoint(g: *graph.Graph, origin: rl.Vector2, obstacles: []const
     var nearest_point: ?rl.Vector2 = null;
     var min_distance = std.math.inf(f32);
     while (iter.next()) |value| {
-        const dir = if (is_ending) origin.subtract(value.point) else value.point.subtract(origin);
-        const view_point = if (is_ending) value.point else origin;
+        const from = if (is_ending) value.point else origin;
+        const to = if (is_ending) origin else value.point;
         const is_insight = for (obstacles) |obstacle| {
-            if (rayIntersectRect(view_point, dir, obstacle)) {
+            if (rayIntersectRect(from, to, obstacle)) {
                 break false;
             }
         } else true;
@@ -302,44 +302,37 @@ fn graphFindNearestPoint(g: *graph.Graph, origin: rl.Vector2, obstacles: []const
         }
     }
     if (nearest_point != null) {
-        std.debug.print("nearest_point ({d},{d})\n", .{ nearest_point.?.x, nearest_point.?.y });
+        std.debug.print("nearest_point ({d},{d}) - {s}\n", .{ nearest_point.?.x, nearest_point.?.y, if (is_ending) "end" else "start" });
     } else {
         std.debug.print("nearest_point is null\n", .{});
     }
     return nearest_point;
 }
 
-// intersection using the slab method
-// https://tavianator.com/2011/ray_box.html#:~:text=The%20fastest%20method%20for%20performing,remains%2C%20it%20intersected%20the%20box.
-fn rayIntersectRect(origin: rl.Vector2, direction: rl.Vector2, rect: rl.Rectangle) bool {
-    var tmin = -std.math.inf(f32);
-    var tmax = std.math.inf(f32);
-
-    if (direction.x != 0.0) {
-        const tx1 = (rect.x - origin.x) / direction.x;
-        const tx2 = ((rect.x + rect.width) - origin.x) / direction.x;
-
-        tmin = @max(tmin, @min(tx1, tx2));
-        tmax = @min(tmax, @max(tx1, tx2));
+fn rayIntersectRect(start: rl.Vector2, end: rl.Vector2, rect: rl.Rectangle) bool {
+    var points: rl.Vector2 = undefined;
+    const lines = [4][2]rl.Vector2{
+        .{
+            rl.Vector2.init(rect.x, rect.y),
+            rl.Vector2.init(rect.x + rect.width, rect.y),
+        },
+        .{
+            rl.Vector2.init(rect.x, rect.y + rect.height),
+            rl.Vector2.init(rect.x + rect.width, rect.y + rect.height),
+        },
+        .{
+            rl.Vector2.init(rect.x, rect.y),
+            rl.Vector2.init(rect.x, rect.y + rect.height),
+        },
+        .{
+            rl.Vector2.init(rect.x + rect.width, rect.y),
+            rl.Vector2.init(rect.x + rect.width, rect.y + rect.height),
+        },
+    };
+    for (lines) |line| {
+        if (rl.checkCollisionLines(start, end, line[0], line[1], &points)) {
+            return true;
+        }
     }
-
-    if (direction.y != 0.0) {
-        const ty1 = (rect.y - origin.y) / direction.y;
-        const ty2 = ((rect.y + rect.height) - origin.y) / direction.y;
-
-        tmin = @max(tmin, @min(ty1, ty2));
-        tmax = @min(tmax, @max(ty1, ty2));
-    }
-
-    // if maxParam < 0, ray is intersecting AABB, but the whole AABB is behind us
-    if (tmax < 0) {
-        return false;
-    }
-
-    // if minParam > maxParam, ray doesn't intersect AABB
-    if (tmin > tmax) {
-        return false;
-    }
-
-    return true;
+    return false;
 }
